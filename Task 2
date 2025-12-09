@@ -1,0 +1,83 @@
+from google.colab import files
+import zipfile, io, os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+print("📌 Upload your ZIP dataset file (e.g., archive.zip)")
+uploaded = files.upload()
+zip_file_name = list(uploaded.keys())[0]
+
+# STEP 2: Extract ZIP
+zip_ref = zipfile.ZipFile(io.BytesIO(uploaded[zip_file_name]), 'r')
+zip_ref.extractall("/content/data")
+zip_ref.close()
+print("✔️ Files extracted to → /content/data")
+
+# STEP 3: Load the FIRST CSV in the ZIP Automatically
+csv_files = [f for f in os.listdir("/content/data") if f.endswith(".csv")]
+df = pd.read_csv("/content/data/" + csv_files[0])
+print(f"\n📂 Loaded CSV File: {csv_files[0]}\n")
+display(df.head())
+
+print("\n🔍 Dataset Info:")
+df.info()
+
+print("\n📌 Checking Missing Values:")
+print(df.isna().sum())
+
+# Fill numeric missing values with mean
+numeric_cols = df.select_dtypes(include=['number']).columns
+df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+
+# Fill categorical missing values with mode
+categorical_cols = df.select_dtypes(include=['object']).columns
+df[categorical_cols] = df[categorical_cols].fillna(df[categorical_cols].mode().iloc[0])
+
+print("\n✨ Missing values handled!")
+
+# Remove duplicates
+before = df.shape[0]
+df.drop_duplicates(inplace=True)
+after = df.shape[0]
+print(f"🧽 Removed {before - after} duplicate rows")
+
+print("\n📌 Descriptive Statistics:")
+display(df.describe())
+
+print("\n🔎 Column Names:")
+print(df.columns.tolist())
+
+# Distribution of Numeric Columns
+for col in numeric_cols:
+    plt.figure()
+    df[col].plot(kind='hist', bins=10, edgecolor='black', color='lightgreen')
+    plt.title(f"Histogram of {col}")
+    plt.xlabel(col)
+    plt.ylabel("Frequency")
+    plt.show()
+
+# Bar Charts for Categorical Columns
+for col in categorical_cols:
+    plt.figure()
+    df[col].value_counts().head(10).plot(kind='bar', color='skyblue', edgecolor='black')
+    plt.title(f"Bar Chart of {col}")
+    plt.xlabel(col)
+    plt.ylabel("Count")
+    plt.show()
+
+# Correlation Heatmap (numeric variables)
+if len(numeric_cols) > 1:
+    plt.figure(figsize=(10,6))
+    sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="coolwarm")
+    plt.title("Correlation Heatmap")
+    plt.show()
+
+# Pairplot to explore relationships
+if len(numeric_cols) > 1:
+    sns.pairplot(df[numeric_cols])
+    plt.suptitle("Pairplot Relationships", y=1.02)
+    plt.show()
+
+print("\n🎯 EDA Completed Successfully!")
